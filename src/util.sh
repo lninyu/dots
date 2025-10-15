@@ -11,35 +11,21 @@ util.uniq() {
 }
 
 util.stacktrace() {
-	local -r IFS=$'\n'
-	local -i idx len=${#FUNCNAME[@]}-1
 	local -n result="${1:?}"
-	local -a caller=("${FUNCNAME[@]::len}")
-	local -A defmap=()
-	local temp func file line
+	local -r IFS=" "
+	local -i idx=1
+	local temp line file func="${FUNCNAME[1]}"
 
-	util.uniq caller
+	while temp=($(caller ${idx})); do
+		((++idx))
 
-	shopt -q extdebug
-	local -i extdebug=${?}
+		line="${temp[0]}"
+		file="${temp[2]}"
 
-	(( extdebug )) && shopt -s extdebug
+		result+=($'\t'"at ${func}(${file}:${line})")
 
-	for temp in $(declare -F "${caller[@]}"); do
-		func="${temp%% *}"
-		file="${temp##* }"
-
-		defmap["${func}"]="${file}"
+		func="${temp[1]}"
 	done
 
-	(( extdebug )) && shopt -u extdebug
-
-	for ((idx = 1; idx < len; ++idx)); do
-		func="${FUNCNAME[idx]}"
-		file="${defmap[${FUNCNAME[idx+1]:-\ }]:-${BASH_SOURCE[-1]}}"
-		line="${BASH_LINENO[idx]}"
-		result+=("    at ${func}(${file}:${line})")
-	done
-
-	result+=("    at <main>(${BASH_SOURCE[-1]})")
+	result+=($'\t'"at <main>(${BASH_SOURCE[-1]})")
 }
